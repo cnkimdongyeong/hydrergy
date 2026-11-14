@@ -1,0 +1,58 @@
+{
+    "economic": {
+        "equipment_lifetime_years": 20,
+        "annual_interest_rate": 0.05,
+        "discount_rate": 0.05
+    },
+    "battery": {
+        "charge_efficiency": 0.92,
+        "discharge_efficiency": 0.92,
+        "self_discharge_per_hour": 0.0001,
+        "max_soc": 0.95,
+        "min_soc": 0.10,
+        "initial_soc": 0.50
+    },
+    "electrolyzer": {
+        "efficiency": 0.75,
+        "specific_energy_consumption_kWh_per_kg_H2": 48,
+        "design_production_rate_kg_per_h": 100
+    },
+    "carbon_capture": {
+        "efficiency": 0.85,
+        "specific_energy_consumption_kWh_per_kg_CO2": 6.887,
+        "design_capture_rate_kg_per_h": 726
+    },
+    "CH3OH_production": {
+        "synthesis_efficiency": 0.90,
+        "compression_efficiency": 0.85,
+        "specific_energy_consumption_kWh_per_kg_CH3OH": 15.1515,
+        "design_production_rate_kg_per_h": 528
+    },
+    "solar": {
+        "peak_irradiance_W_per_m2": 1000,
+        "panel_efficiency": 0.20,
+        "inverter_efficiency": 0.96,
+        "temperature_coefficient_per_C": -0.004,
+        "reference_temperature_C": 25,
+        "ambient_temperature_C": 30
+    },
+    "grid": {
+        "carbon_intensity_kgCO2_per_kWh": 0.55,
+        "grid_connection_limit_kW": 26000
+    },
+    "buffer_tanks": {
+        "h2_capacity_kg": 100,
+        "co2_capacity_kg": 726,
+        "note": "H2/CO2 缓冲罐设计缓冲量（约 1 小时设计产能），仅用于可视化料位换算"
+    },
+    "sizing_assumptions": {
+        "CH3OH_stoichiometric_CO2_per_kg": 1.375,
+        "CH3OH_stoichiometric_H2_per_kg": 0.1875,
+        "water_consumption_kWh_per_kg_H2": 0.5
+    },
+    "marginal_cost": {
+        "maintenance_percent_of_capex_per_year": 0.02,
+        "labor_cost_per_hour": 30,
+        "operator_count": 4
+    }
+}
