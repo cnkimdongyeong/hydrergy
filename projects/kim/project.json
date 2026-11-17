@@ -1,0 +1,7 @@
+{
+  "name": "kim",
+  "repo": "kim",
+  "title": "绿氢 + 碳捕获 + CH₃OH 数字孪生平台",
+  "subtitle": "Green H₂ · CO₂ Capture · Methanol",
+  "note": "改这里就能给项目改名；package.ps1 会按 name 生成上传文件夹，页面标题也会自动同步"
+}
