@@ -1,0 +1,420 @@
+﻿﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>绿氢+碳捕获+CH3OH 数字孪生平台 | Digital Twin Platform</title>
+<link rel="icon" href="data:,">
+
+<!-- Three.js & Chart.js (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg-0: #060c1a;
+    --bg-1: #0b1a2e;
+    --bg-2: #112a44;
+    --bg-3: #1a3a5f;
+    --border: #2b5280;
+    --text: #cfe1f5;
+    --text-dim: #7a93ad;
+    --accent: #44aaff;
+    --accent2: #ffcc33;
+    --green: #44ff66;
+    --orange: #ff8833;
+    --red: #ff3355;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    overflow: hidden;
+  }
+
+  /* ============= 布局 ============= */
+  .app {
+    display: grid;
+    grid-template-rows: 52px 1fr 190px;
+    grid-template-columns: 1fr 380px;
+    grid-template-areas:
+      "header header"
+      "scene  side"
+      "charts charts";
+    height: 100vh;
+  }
+
+  header {
+    grid-area: header;
+    background: linear-gradient(180deg, #112a44, #0b1a2e);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 16px;
+    gap: 16px;
+  }
+  header .logo {
+    font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+    background: linear-gradient(90deg, #44aaff, #ffcc33);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header .sub { color: var(--text-dim); font-size: 11px; }
+  header .sep { width: 1px; height: 24px; background: var(--border); }
+  header .badge {
+    padding: 4px 10px; border-radius: 12px;
+    background: rgba(68,170,255,0.15); color: var(--accent);
+    border: 1px solid rgba(68,170,255,0.4); font-size: 11px;
+  }
+  header .badge.ok { background: rgba(68,255,102,0.12); color: var(--green); border-color: rgba(68,255,102,0.4); }
+  header .badge.warn { background: rgba(255,204,51,0.12); color: var(--accent2); border-color: rgba(255,204,51,0.4); }
+
+  .controls {
+    margin-left: auto; display: flex; gap: 8px; align-items: center;
+  }
+  button.btn {
+    background: linear-gradient(180deg, #1a3a5f, #0b1a2e);
+    border: 1px solid var(--border); color: var(--text);
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; transition: all .15s;
+  }
+  button.btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.btn.primary { background: linear-gradient(180deg, #2d8fdd, #0b3a66); border-color: #44aaff; }
+  button.btn.primary:hover { color: #fff; box-shadow: 0 0 12px rgba(68,170,255,0.3); }
+  button.btn.danger { background: linear-gradient(180deg, #aa2244, #551122); border-color: #ff3355; }
+  .speed-label { color: var(--text-dim); font-size: 11px; }
+  select.btn { padding: 6px 10px; }
+
+  /* ============= 3D 场景区 ============= */
+  .scene-wrap {
+    grid-area: scene;
+    position: relative;
+    background: var(--bg-1);
+    overflow: hidden;
+  }
+  #factory-3d { position: absolute; inset: 0; }
+  .scene-hud {
+    position: absolute; inset: 0; pointer-events: none;
+    font-size: 11px; color: var(--text-dim);
+  }
+  .hud-tl { position: absolute; top: 10px; left: 12px; }
+  .hud-tr { position: absolute; top: 10px; right: 12px; text-align: right; }
+  .hud-br { position: absolute; bottom: 10px; right: 12px; }
+  .legend-box {
+    position: absolute; left: 12px; bottom: 12px;
+    background: rgba(11,26,46,0.85); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; pointer-events: auto;
+    backdrop-filter: blur(4px);
+  }
+  .legend-box .row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 11px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  .crosshair {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 220px; height: 220px;
+    border: 1px dashed rgba(68,170,255,0.25);
+    border-radius: 50%; pointer-events: none;
+  }
+
+  /* ============= 右侧数据面板 ============= */
+  .side {
+    grid-area: side;
+    background: var(--bg-1);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .panel {
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .panel-title {
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .panel-title::before {
+    content: ''; width: 4px; height: 14px; background: var(--accent);
+    border-radius: 2px;
+  }
+  .kv {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+    font-size: 12px;
+  }
+  .kv span:first-child { color: var(--text-dim); }
+  .kv span:last-child { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .soc-bar {
+    height: 10px; background: var(--bg-0); border-radius: 6px;
+    overflow: hidden; margin: 6px 0 4px; border: 1px solid var(--border);
+  }
+  .soc-bar-fill {
+    height: 100%; width: 50%;
+    background: linear-gradient(90deg, #44ff66, #22cc44);
+    transition: width .4s, background .4s;
+  }
+  .soc-high { background: linear-gradient(90deg, #44ff66, #22cc44); }
+  .soc-mid  { background: linear-gradient(90deg, #ffcc33, #ff8833); }
+  .soc-low  { background: linear-gradient(90deg, #ff3355, #cc1133); }
+
+  .mode-badge {
+    display: inline-block; font-size: 11px;
+    padding: 2px 8px; border-radius: 10px;
+    background: rgba(68,255,102,0.12); color: var(--green);
+    border: 1px solid rgba(68,255,102,0.3);
+  }
+
+  .big-num {
+    font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+    background: linear-gradient(90deg, #44aaff, #ffcc33);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* ============= 底部图表 ============= */
+  .charts {
+    grid-area: charts;
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 10px; padding: 10px 14px 12px;
+  }
+  .chart-card {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .chart-card .ctitle {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .chart-box { flex: 1; min-height: 0; position: relative; }
+  canvas { width: 100% !important; height: 100% !important; }
+
+  /* ============= 滚动条 ============= */
+  .side::-webkit-scrollbar { width: 6px; }
+  .side::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .side::-webkit-scrollbar-track { background: transparent; }
+
+  /* ============= 闪烁效果 ============= */
+  @keyframes pulseGlow {
+    0%,100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .live-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); margin-right: 6px;
+    animation: pulseGlow 1.2s infinite;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ========== 顶部 ========== -->
+  <header>
+    <div class="logo" id="brand-title">⚗️ 绿氢 + 碳捕获 + CH₃OH 数字孪生平台</div>
+    <div class="sub" id="brand-sub">Green H₂ · CO₂ Capture · Methanol</div>
+    <div class="sep"></div>
+    <div class="badge ok" id="sys-status"><span class="live-dot"></span>系统在线 · 实时运行中</div>
+    <div class="badge">20年寿命 / 5% 利率</div>
+    <div class="badge">独立微电网模式</div>
+
+    <div class="controls">
+      <span class="speed-label">仿真速度</span>
+      <select class="btn" id="speed">
+        <option value="300">超快 (0.3s/h)</option>
+        <option value="1000" selected>正常 (1s/h)</option>
+        <option value="3000">慢速 (3s/h)</option>
+      </select>
+      <button class="btn primary" id="btn-start">▶ 开始/重置</button>
+      <button class="btn" id="btn-pause">⏸ 暂停</button>
+      <button class="btn danger" id="btn-reset">↺ 重置</button>
+    </div>
+  </header>
+
+  <!-- ========== 3D 场景 ========== -->
+  <div class="scene-wrap">
+    <div id="factory-3d"></div>
+    <div class="crosshair"></div>
+
+    <div class="scene-hud">
+      <div class="hud-tl">
+        <div>工厂场地: 200m × 150m</div>
+        <div style="margin-top:4px">日照模拟: 24 小时 / 动态太阳</div>
+      </div>
+      <div class="hud-tr">
+        <div>📷 鼠标左键旋转 · 右键平移 · 滚轮缩放</div>
+      </div>
+      <div class="hud-br" id="dash-hour" style="font-size:14px;color:var(--accent);font-weight:600">t = 0h</div>
+    </div>
+
+    <div class="legend-box">
+      <div class="row"><div class="dot" style="background:#1e3a5f;border:1px solid #44aaff"></div> 太阳能阵列</div>
+      <div class="row"><div class="dot" style="background:#2d8fdd"></div> 电解槽 (4800 kW · 100 kg H₂/h)</div>
+      <div class="row"><div class="dot" style="background:#6a9f4a"></div> 碳捕获塔 (5000 kW · 726 kg CO₂/h)</div>
+      <div class="row"><div class="dot" style="background:#d47b3a"></div> CH₃OH 合成塔 (8000 kW · 528 kg/h)</div>
+      <div class="row"><div class="dot" style="background:#44cc44"></div> 储能电池 (8000 kW · 800000 kWh)</div>
+      <div class="row"><div class="dot" style="background:#888"></div> 电网铁塔 (接入 26000 kW)</div>
+    </div>
+  </div>
+
+  <!-- ========== 右侧面板 ========== -->
+  <aside class="side">
+
+    <div class="panel">
+      <div class="panel-title">实时输入</div>
+      <div class="kv">
+        <span>☀ 太阳辐射功率</span><span id="dash-solar">0 kW</span>
+        <span>🔆 光伏实际出力</span><span id="dash-pv">0 kW</span>
+        <span>⚡ 分时电价</span><span id="dash-price">$0.04/kWh</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">电池储能状态</div>
+      <div id="dash-batt-mode" class="mode-badge">— 待机 —</div>
+      <div class="soc-bar"><div id="dash-soc-bar" class="soc-bar-fill" style="width:50%"></div></div>
+      <div class="kv" style="margin-top:8px">
+        <span>SOC</span><span id="dash-soc">50.0%</span>
+        <span>当前容量</span><span id="dash-soc-kwh">400,000 kWh</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">设备功率分配</div>
+      <div class="kv">
+        <span>🔵 电解槽 (4800 kW)</span><span id="dash-el">0 kW</span>
+        <span>🟢 碳捕获 (5000 kW)</span><span id="dash-cap">0 kW</span>
+        <span>🟠 CH₃OH 合成 (8000 kW)</span><span id="dash-ch3">0 kW</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">当前小时产出</div>
+      <div class="kv">
+        <span>H₂ 产量</span><span id="dash-h2-now">0 kg/h</span>
+        <span>CO₂ 捕获</span><span id="dash-co2-now">0 kg/h</span>
+        <span>CH₃OH 产量</span><span id="dash-ch3-now">0 kg/h</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">累计统计</div>
+      <div class="kv">
+        <span>H₂ 累计</span><span id="dash-h2-total">0 kg</span>
+        <span>CO₂ 累计捕获</span><span id="dash-co2-total">0 kg</span>
+        <span>CH₃OH 累计</span><span id="dash-ch3-total">0 kg</span>
+        <span>电网总耗电</span><span id="dash-grid-total">0 kWh</span>
+        <span>累计电费</span><span id="dash-cost-total">$0</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">CH₃OH 经济性 & 碳足迹</div>
+      <div style="text-align:center;padding:8px 0">
+        <div style="font-size:11px;color:var(--text-dim)">生产成本 (摊销 CAPEX)</div>
+        <div id="dash-lcoe" class="big-num" style="font-size:20px;margin:2px 0">$0 /t CH₃OH</div>
+      </div>
+      <div style="text-align:center;padding:4px 0">
+        <div style="font-size:11px;color:var(--text-dim)">碳足迹 (电网电碳排放)</div>
+        <div id="dash-cf" style="font-weight:600;color:var(--orange);margin-top:2px">0 kgCO₂eq /t CH₃OH</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ========== 底部图表 ========== -->
+  <div class="charts">
+    <div class="chart-card">
+      <div class="ctitle">⚡ 实时能源分配 (kW)</div>
+      <div class="chart-box"><canvas id="chart-energy-flow"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="ctitle">📈 24h 太阳能 · 电价 · 电池 SOC</div>
+      <div class="chart-box"><canvas id="chart-24h"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="ctitle">📊 累计产出 H₂ / CO₂ / CH₃OH (kg)</div>
+      <div class="chart-box"><canvas id="chart-cumulative"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="input_data.js?v=18"></script>
+<script src="simulation.js?v=18"></script>
+<script src="visualization.js?v=18"></script>
+<script>
+  // 项目名注入：统一读取 project.json，改名字只需改那一个文件
+  function applyProjectInfo(p) {
+    const name = (p && p.name) ? String(p.name).trim() : '';
+    if (!name) return;
+    const title = (p.title || '能源数字孪生平台').trim();
+    const sub = (p.subtitle || '').trim();
+    document.title = `${name} · ${title}`;
+    const elTitle = document.getElementById('brand-title');
+    const elSub = document.getElementById('brand-sub');
+    if (elTitle) elTitle.textContent = `⚗️ ${name} · ${title}`;
+    if (elSub && sub) elSub.textContent = sub;
+  }
+
+  // 启动入口
+  (async () => {
+    // 1) 加载配置
+    const [fconfig, extra, project] = await Promise.all([
+      fetch('fconfig.json?v=11').then(r => r.json()),
+      fetch('extra.json?v=11').then(r => r.json()),
+      fetch('project.json?v=1').then(r => r.json()).catch(() => ({}))
+    ]);
+    window.CONFIG = { fconfig, extra, project };
+    applyProjectInfo(project);
+    // 读取 CSV 输入（24h 太阳辐射 / 电价）
+    await INPUT_DATA.loadInputFiles();
+    window.SOLAR_CURVE = INPUT_DATA.SOLAR_CURVE;
+    window.PRICE_CURVE = INPUT_DATA.PRICE_CURVE;
+
+    // 2) 初始化 3D + 图表
+    VIZ.initThreeD('factory-3d');
+    VIZ.initCharts();
+
+    // 3) 响应式
+    window.addEventListener('resize', () => {
+      const c = document.getElementById('factory-3d');
+      camera.aspect = c.clientWidth / c.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(c.clientWidth, c.clientHeight);
+    });
+
+    // 4) 控制按钮
+    let paused = false;
+    document.getElementById('btn-start').onclick = () => {
+      VIZ.startSimulationLoop(fconfig, extra);
+      paused = false;
+      document.getElementById('btn-pause').textContent = '⏸ 暂停';
+    };
+    document.getElementById('btn-pause').onclick = () => {
+      if (!paused) {
+        VIZ.pauseSimulation();
+        paused = true;
+        document.getElementById('btn-pause').textContent = '▶ 继续';
+      } else {
+        VIZ.resumeSimulation(fconfig, extra);
+        paused = false;
+        document.getElementById('btn-pause').textContent = '⏸ 暂停';
+      }
+    };
+    document.getElementById('btn-reset').onclick = () => location.reload();
+    document.getElementById('speed').onchange = (e) => VIZ.setSpeed(Number(e.target.value));
+
+    // 5) 自动开始
+    VIZ.startSimulationLoop(fconfig, extra);
+  })();
+</script>
+
+</body>
+</html>
