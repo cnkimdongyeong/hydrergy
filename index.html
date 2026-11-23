@@ -132,7 +132,10 @@
 
   async function renderGate(username) {
     const cfg = (window.USERS && window.USERS[username]) || {};
-    const names = cfg.projects || [];
+    // projects 写 "*" 表示拥有全部项目权限
+    const names = cfg.projects === '*'
+      ? (window.ALL_PROJECTS || [])
+      : (cfg.projects || []);
     GATE_USER.textContent = username;
     GATE_SUB.textContent = `您有 ${names.length} 个可访问的项目`;
     GRID.innerHTML = '';
