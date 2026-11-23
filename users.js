@@ -3,7 +3,7 @@
 // 修改后保存即可，无需其他操作
 
 // 全部项目名（admin 的 projects 填 "*" 时会显示这里的全部项目）
-window.ALL_PROJECTS = ["kim"];
+window.ALL_PROJECTS = ["kim","zhang"];
 
 window.USERS = {
 
@@ -17,5 +17,5 @@ window.USERS = {
   // 普通成员：数组里只写自己的项目名，登录后只能看到自己的卡片
   // 注意：projects/<名字>/ 目录必须真实存在，否则卡片会显示为灰色不可点
   // "zhang": { pass: "zhang2026", projects: ["zhang"] },
-  // "li":    { pass: "li2026",    projects: ["li"] }
+  // "kim":    { pass: "kim2026",    projects: ["kim"] }
 };
