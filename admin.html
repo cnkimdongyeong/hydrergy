@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管理面板 · 上传学生项目</title>
+<style>
+  :root{--bg:#070d18;--card:#101a2b;--card2:#182438;--line:#2a3b55;--accent:#4fc3ff;--accent2:#2fb6c9;--txt:#e6edf6;--sub:#8aa0bc;--warn:#ff6b6b;--ok:#44cc55}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,"Microsoft YaHei",sans-serif}
+  body{
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(79,195,255,.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 10%, rgba(47,182,201,.08), transparent 60%),
+      var(--bg);
+    padding:36px 16px 60px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  h1{font-size:20px;font-weight:700}
+  h1 .dot{color:var(--accent)}
+  .back{color:var(--accent);font-size:13px;text-decoration:none}
+  .back:hover{text-decoration:underline}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:18px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  .card h2{font-size:15px;font-weight:600;margin-bottom:6px}
+  .card .hint{color:var(--sub);font-size:12px;line-height:1.7}
+  .hint code{background:#0c1624;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+  label{display:block;font-size:12px;color:var(--sub);margin:18px 0 8px}
+  input[type=text],input[type=password],input[type=file]{
+    width:100%;background:#0c1624;border:1px solid var(--line);border-radius:10px;
+    padding:11px 13px;color:var(--txt);font-size:14px;outline:none;font-family:inherit;
+  }
+  input[type=text]:focus,input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,195,255,.15)}
+  input[type=file]{padding:9px 12px;cursor:pointer}
+  input:disabled{opacity:.55;cursor:not-allowed}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.row{grid-template-columns:1fr}}
+  .btn{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;
+    color:#0a1420;font-size:14px;font-weight:600;padding:11px 20px;cursor:pointer;
+    transition:transform .1s,opacity .15s;margin-top:18px;
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt);font-weight:500}
+  .status{font-size:12px;margin-top:10px;min-height:18px;color:var(--sub);word-break:break-all}
+  .status.ok{color:var(--ok)}
+  .status.err{color:var(--warn)}
+  .log{
+    margin-top:14px;background:#0c1624;border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;font-size:12px;line-height:1.8;color:var(--sub);
+    max-height:260px;overflow:auto;font-family:Consolas,Menlo,monospace;white-space:pre-wrap;
+  }
+  .badge{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11px;color:var(--sub);margin-left:8px}
+  .warnbox{border-color:rgba(255,107,107,.4);background:rgba(255,107,107,.06)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1><span class="dot">●</span> 管理面板 · 上传学生项目</h1>
+    <a class="back" href="index.html">← 返回门户</a>
+  </div>
+
+  <div class="card">
+    <h2>第一步：GitHub 访问令牌 <span class="badge" id="token-badge">未设置</span></h2>
+    <div class="hint">
+      令牌只保存在你这台浏览器的 localStorage 里，不会写进仓库代码。建议在 GitHub →
+      Settings → Developer settings → <b>Fine-grained tokens</b> 新建，仅授权本仓库的
+      <code>Contents: Read and write</code>；有效期可设 90 天，到期重新生成即可。
+    </div>
+    <label>粘贴令牌（ghp_… 或 github_pat_…）</label>
+    <input type="password" id="token" placeholder="github_pat_xxxxxxxxxxxx" autocomplete="off">
+    <button class="btn ghost" id="btn-save-token">保存并验证</button>
+    <div class="status" id="token-status"></div>
+  </div>
+
+  <div class="card">
+    <h2>第二步：上传项目文件夹</h2>
+    <div class="hint">
+      选择学生项目的整个文件夹，<b>文件夹名就是他的登录账号</b>，密码在这里设置。
+      上传后会自动更新 <code>users.js</code> 的项目列表和账号，约 1 分钟后门户生效。
+    </div>
+    <label>项目文件夹</label>
+    <input type="file" id="folder" webkitdirectory directory multiple>
+    <div class="status" id="pick-status">尚未选择文件夹</div>
+
+    <div class="row">
+      <div>
+        <label>账号（= 文件夹名）</label>
+        <input type="text" id="account" readonly placeholder="选择文件夹后自动填入">
+      </div>
+      <div>
+        <label>密码（由你设置，4 位以上）</label>
+        <input type="text" id="pass" placeholder="例如 stu2026">
+      </div>
+    </div>
+
+    <button class="btn" id="btn-upload" disabled>提交到 GitHub</button>
+    <div class="log" id="log">等待操作…</div>
+  </div>
+
+  <div class="card warnbox">
+    <h2>注意</h2>
+    <div class="hint">
+      1. 令牌等于你账号的写权限，别在公共电脑上保存，用完可到 GitHub 撤销。<br>
+      2. 学生账号密码是明文存在 <code>users.js</code> 里的，懂技术的人能看到，只适合内部演示。<br>
+      3. 同名文件夹重复上传会覆盖其中的文件，但不会删除旧的多余文件。
+    </div>
+  </div>
+</div>
+
+<script src="users.js"></script>
+<script>
+(function(){
+  const OWNER  = 'cnkimdongyeong';
+  const REPO   = 'hydrergy';
+  const BRANCH = 'main';
+  const API    = 'https://api.github.com';
+  const TOKEN_KEY = 'gh_admin_token_v1';
+  const MAX_FILE = 25 * 1024 * 1024;   // 单文件 25MB 上限
+
+  const $ = id => document.getElementById(id);
+  const tokenInput = $('token');
+  const tokenBadge = $('token-badge');
+  const tokenStatus = $('token-status');
+  const folderInput = $('folder');
+  const pickStatus = $('pick-status');
+  const accountInput = $('account');
+  const passInput = $('pass');
+  const uploadBtn = $('btn-upload');
+  const logBox = $('log');
+
+  function log(msg){
+    logBox.textContent += '\n' + msg;
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+  function clearLog(){ logBox.textContent = ''; }
+
+  // ---------- GitHub API ----------
+  function token(){ return localStorage.getItem(TOKEN_KEY) || ''; }
+
+  async function gh(path, opts){
+    opts = opts || {};
+    const res = await fetch(API + path, {
+      method: opts.method || 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + token(),
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json'
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch(e){ data = null; }
+    if (!res.ok) {
+      const m = (data && data.message) || (res.status + ' ' + res.statusText);
+      throw new Error(m + '（HTTP ' + res.status + '）');
+    }
+    return data;
+  }
+
+  // ---------- 编码工具 ----------
+  function bytesToB64(bytes){
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK){
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
+  function textToB64(t){ return bytesToB64(new TextEncoder().encode(t)); }
+
+  function buildUsersJs(projects, users){
+    return [
+      '// users.js — 账号、密码、项目权限配置',
+      '// 由 admin.html 自动生成，也可以手动编辑',
+      '// 纯前端实现，仅作为"访客分流界面"，不是安全边界',
+      '',
+      'window.ALL_PROJECTS = ' + JSON.stringify(projects) + ';',
+      '',
+      'window.USERS = ' + JSON.stringify(users, null, 2) + ';',
+      ''
+    ].join('\n');
+  }
+
+  const SKIP = /(^|\/)(\.git|node_modules|\.DS_Store|Thumbs\.db|desktop\.ini)(\/|$)/i;
+
+  // ---------- 令牌 ----------
+  function renderTokenState(){
+    const t = token();
+    tokenBadge.textContent = t ? '已保存 · ' + t.slice(-4) : '未设置';
+    tokenBadge.style.color = t ? 'var(--ok)' : 'var(--sub)';
+  }
+
+  $('btn-save-token').addEventListener('click', async () => {
+    const t = tokenInput.value.trim();
+    if (!t) { tokenStatus.textContent = '请先粘贴令牌'; tokenStatus.className = 'status err'; return; }
+    tokenStatus.textContent = '验证中…'; tokenStatus.className = 'status';
+    localStorage.setItem(TOKEN_KEY, t);
+    try {
+      const me = await gh('/user');
+      const repo = await gh('/repos/' + OWNER + '/' + REPO);
+      const canWrite = !!(repo.permissions && repo.permissions.push);
+      tokenStatus.textContent = '验证通过：' + me.login + (canWrite ? '，对 ' + OWNER + '/' + REPO + ' 有写权限' : '，但该令牌没有此仓库的写权限');
+      tokenStatus.className = 'status ' + (canWrite ? 'ok' : 'err');
+      tokenInput.value = '';
+      renderTokenState();
+      updateUploadState();
+    } catch(e) {
+      localStorage.removeItem(TOKEN_KEY);
+      tokenStatus.textContent = '验证失败：' + e.message;
+      tokenStatus.className = 'status err';
+      renderTokenState();
+      updateUploadState();
+    }
+  });
+
+  // ---------- 文件夹选择 ----------
+  function pickedFiles(){
+    return Array.prototype.slice.call(folderInput.files || []).filter(f => !SKIP.test(f.webkitRelativePath || ''));
+  }
+
+  function updateUploadState(){
+    const files = pickedFiles();
+    const name = files.length ? files[0].webkitRelativePath.split('/')[0] : '';
+    accountInput.value = name;
+    const ok = !!token() && !!name && passInput.value.trim().length >= 4;
+    uploadBtn.disabled = !ok;
+  }
+
+  folderInput.addEventListener('change', () => {
+    const files = pickedFiles();
+    if (!files.length){
+      pickStatus.textContent = '尚未选择文件夹';
+      pickStatus.className = 'status';
+    } else {
+      const total = files.reduce((s,f) => s + f.size, 0);
+      pickStatus.textContent = '已选择 ' + files.length + ' 个文件，共 ' + (total/1024/1024).toFixed(1) + ' MB';
+      pickStatus.className = 'status ok';
+    }
+    updateUploadState();
+  });
+  passInput.addEventListener('input', updateUploadState);
+
+  // ---------- 上传 ----------
+  uploadBtn.addEventListener('click', async () => {
+    const files = pickedFiles();
+    if (!files.length) return;
+    const folder = files[0].webkitRelativePath.split('/')[0];
+    const pass = passInput.value.trim();
+
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(folder)){
+      clearLog(); log('✗ 文件夹名只能用英文、数字、下划线或短横线（当前：' + folder + '）');
+      log('  请把文件夹改名为英文后重新选择，例如 zhang、stu01。');
+      return;
+    }
+    if (window.USERS && window.USERS[folder] && window.USERS[folder].projects === '*'){
+      clearLog(); log('✗ ' + folder + ' 是管理员账号，不能被项目覆盖');
+      return;
+    }
+    const big = files.find(f => f.size > MAX_FILE);
+    if (big){ clearLog(); log('✗ 文件过大：' + big.webkitRelativePath + '（上限 25MB）'); return; }
+
+    uploadBtn.disabled = true;
+    clearLog();
+    log('开始上传：projects/' + folder + '/（' + files.length + ' 个文件）');
+
+    try {
+      // 1) 取当前提交
+      log('· 读取仓库当前状态…');
+      const ref = await gh('/repos/' + OWNER + '/' + REPO + '/git/ref/heads/' + BRANCH);
+      const headSha = ref.object.sha;
+      const headCommit = await gh('/repos/' + OWNER + '/' + REPO + '/git/commits/' + headSha);
+      const baseTree = headCommit.tree.sha;
+
+      // 2) 上传每个文件为 blob
+      const tree = [];
+      for (let i = 0; i < files.length; i++){
+        const f = files[i];
+        const b64 = bytesToB64(new Uint8Array(await f.arrayBuffer()));
+        const blob = await gh('/repos/' + OWNER + '/' + REPO + '/git/blobs', {
+          method: 'POST', body: { content: b64, encoding: 'base64' }
+        });
+        tree.push({ path: 'projects/' + f.webkitRelativePath, mode: '100644', type: 'blob', sha: blob.sha });
+        log('  ✓ ' + f.webkitRelativePath);
+      }
+
+      // 3) 更新 users.js
+      const users = JSON.parse(JSON.stringify(window.USERS || {}));
+      const projects = (window.ALL_PROJECTS || []).slice();
+      if (!Object.keys(users).some(k => users[k] && users[k].projects === '*')) {
+        throw new Error('users.js 里没有管理员账号（projects 为 "*"），已中止');
+      }
+      users[folder] = { pass: pass, projects: [folder] };
+      if (projects.indexOf(folder) === -1) projects.push(folder);
+      const newUsersJs = buildUsersJs(projects, users);
+      const usersBlob = await gh('/repos/' + OWNER + '/' + REPO + '/git/blobs', {
+        method: 'POST', body: { content: textToB64(newUsersJs), encoding: 'base64' }
+      });
+      tree.push({ path: 'users.js', mode: '100644', type: 'blob', sha: usersBlob.sha });
+      log('  ✓ users.js（新增账号 ' + folder + '，密码已设置）');
+
+      // 4) 提交并推送
+      log('· 创建提交…');
+      const newTree = await gh('/repos/' + OWNER + '/' + REPO + '/git/trees', {
+        method: 'POST', body: { base_tree: baseTree, tree: tree }
+      });
+      const commit = await gh('/repos/' + OWNER + '/' + REPO + '/git/commits', {
+        method: 'POST',
+        body: {
+          message: 'admin: 上传学生项目 ' + folder,
+          tree: newTree.sha,
+          parents: [headSha]
+        }
+      });
+      await gh('/repos/' + OWNER + '/' + REPO + '/git/refs/heads/' + BRANCH, {
+        method: 'PATCH', body: { sha: commit.sha, force: false }
+      });
+
+      log('');
+      log('✓ 上传完成，GitHub Pages 正在重新构建（约 1 分钟）');
+      log('  账号：' + folder);
+      log('  密码：' + pass);
+      log('  地址：https://' + OWNER + '.github.io/' + REPO + '/');
+      log('  构建进度：https://github.com/' + OWNER + '/' + REPO + '/actions');
+    } catch(e) {
+      log('');
+      log('✗ 失败：' + e.message);
+      if (/401/.test(e.message)) log('  令牌无效或已过期，请重新生成。');
+      if (/403/.test(e.message)) log('  令牌缺少 Contents 写权限，或触发了频率限制。');
+      if (/404/.test(e.message)) log('  仓库/分支路径不对，或令牌没有该仓库权限。');
+    } finally {
+      uploadBtn.disabled = false;
+      updateUploadState();
+    }
+  });
+
+  renderTokenState();
+  updateUploadState();
+})();
+</script>
+</body>
+</html>
